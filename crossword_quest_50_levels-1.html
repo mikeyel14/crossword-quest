@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crossword Quest — 50 Levels</title>
+<style>
+:root{--bg:#101522;--panel:#1b2335;--panel2:#222d43;--ink:#f3f6ff;--muted:#aab6ce;--accent:#79e0c3;--gold:#ffd166;--bad:#ff7b89;--cell:clamp(27px,7.2vw,42px)}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#24324a,#101522 60%);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+header{padding:22px 16px 12px;text-align:center}h1{margin:0;font-size:clamp(27px,6vw,40px);letter-spacing:.3px}h1 span{color:var(--accent)}header p{color:var(--muted);margin:7px 0 0}
+main{max-width:980px;margin:auto;padding:12px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.card{background:rgba(27,35,53,.96);border:1px solid #34415a;border-radius:18px;padding:16px;box-shadow:0 12px 30px #0002}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.levelname{font-size:21px;font-weight:800}.pill{border-radius:999px;background:#2d3b54;color:var(--accent);padding:6px 11px;font-size:13px;font-weight:700}
+.progress{height:7px;background:#303b50;border-radius:99px;overflow:hidden;margin:13px 0}.progress div{height:100%;width:2%;background:linear-gradient(90deg,var(--accent),#7db8ff);transition:width .25s}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}button,select{border:0;border-radius:11px;padding:10px 13px;font-weight:750;cursor:pointer;font-size:14px}button.primary{background:var(--accent);color:#10221e}button.secondary{background:#34415a;color:var(--ink)}button:disabled{opacity:.35;cursor:not-allowed}
+.playarea{display:grid;grid-template-columns:1fr;gap:16px}.gridwrap{overflow:auto;padding:5px 0}.grid{display:grid;gap:2px;justify-content:center;align-content:start;margin:auto;width:max-content}.cell{width:var(--cell);height:var(--cell);background:#eaf0f9;border-radius:4px;position:relative;color:#162237}.cell.block{background:#29354a}.cell input{width:100%;height:100%;border:0;background:transparent;text-align:center;text-transform:uppercase;font-size:clamp(15px,4vw,21px);font-weight:800;color:#15233a;outline:none;padding:0;border-radius:4px}.cell input:focus{background:#fff1b8;box-shadow:inset 0 0 0 3px #e8b94e}.cell .num{position:absolute;top:1px;left:3px;font-size:9px;color:#43516a;pointer-events:none}.cell.correct input{background:#b8f1d9}.cell.wrong input{background:#ffd0d5}
+.clues{display:grid;grid-template-columns:1fr;gap:14px}.cluegroup h3{margin:0 0 8px;color:var(--accent);font-size:15px}.clue{display:flex;gap:9px;align-items:flex-start;width:100%;text-align:left;background:#222d43;color:var(--ink);margin:5px 0;padding:10px;border:1px solid transparent;line-height:1.35}.clue .n{color:var(--gold);min-width:22px}.clue.active{border-color:var(--accent);background:#2b3c50}.clue.done{opacity:.65}.clue.done .text:after{content:" ✓";color:var(--accent)}
+.status{min-height:24px;color:var(--muted);font-size:14px;margin-top:9px}.status.good{color:var(--accent)}.status.bad{color:var(--bad)}
+.levelpicker{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.levelbtn{width:40px;height:38px;padding:0;background:#2b3549;color:var(--ink)}.levelbtn.current{background:var(--accent);color:#10221e}.levelbtn.unlocked{border:1px solid #6b829f}.levelbtn.locked{opacity:.35}
+.note{font-size:12px;color:var(--muted);line-height:1.5}.win{display:none;text-align:center;padding:16px;border-radius:14px;background:#183d39;margin-top:12px}.win.show{display:block}.win strong{color:var(--accent);font-size:20px}
+@media(min-width:760px){main{grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr)}.playarea{grid-column:1 / -1;grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr)}.gridwrap{grid-row:1}}
+</style>
+</head>
+<body>
+<header><h1>Crossword <span>Quest</span></h1><p>50 levels. Sharper clues. Bigger brain.</p></header>
+<main>
+<section class="card">
+ <div class="topline"><div><div class="levelname" id="levelTitle">Level 1</div><div class="note" id="difficulty">Beginner • Warm-up</div></div><div class="pill" id="progressText">0 / 50 completed</div></div>
+ <div class="progress"><div id="progressBar"></div></div>
+ <div class="topline"><label for="levelSelect" class="note">Jump to level</label><select id="levelSelect" aria-label="Choose level"></select></div>
+ <div class="controls"><button class="primary" id="checkBtn">Check answers</button><button class="secondary" id="hintBtn">Reveal a letter</button><button class="secondary" id="clearBtn">Clear level</button></div>
+ <div class="status" id="status" aria-live="polite">Choose a clue, then fill the squares.</div>
+ <div class="win" id="winBox"><strong>Level cleared! 🎉</strong><p id="winMessage"></p><button class="primary" id="nextBtn">Next level →</button></div>
+</section>
+<section class="card"><div class="topline"><div class="levelname">Level map</div><span class="note">Complete a level to unlock the next</span></div><div class="levelpicker" id="levelMap"></div></section>
+<section class="card playarea">
+ <div class="gridwrap"><div class="grid" id="grid" aria-label="Crossword grid"></div></div>
+ <div class="clues">
+  <div class="cluegroup"><h3>ACROSS →</h3><div id="acrossClues"></div></div>
+  <div class="cluegroup"><h3>DOWN ↓</h3><div id="downClues"></div></div>
+ </div>
+</section>
+<section class="card note">How to play: tap a clue, type one letter per square, and use “Check answers” when you're ready. A hint reveals one letter in the currently selected word. Your progress is saved on this device. Answers with spaces or hyphens are entered without spaces or hyphens.</section>
+</main>
+<script>
+const levels = [
+{d:"Beginner • Warm-up",w:[["CAT","Pet that says meow"],["SUN","Star that lights our day"],["DOG","Pet that barks"],["ICE","Frozen water"],["BED","You sleep on this"]]},
+{d:"Beginner • Everyday words",w:[["BOOK","Something you read"],["RAIN","Water falling from clouds"],["FISH","Animal that lives in water"],["MILK","Drink produced by cows"],["TREE","Tall plant with a trunk"]]},
+{d:"Beginner • Nature",w:[["BIRD","Animal with feathers"],["MOON","Earth's natural satellite"],["LEAF","Part of a plant that catches sunlight"],["ROCK","A hard piece of stone"],["WIND","Moving air"]]},
+{d:"Beginner • Around the home",w:[["CHAIR","You sit on it"],["PLATE","Dish used for serving food"],["SOAP","Used to wash your hands"],["DOOR","You walk through it"],["LAMP","Gives light in a room"]]},
+{d:"Beginner • School",w:[["PENCIL","Writing tool often made of wood"],["CLASS","Group of students learning together"],["ERASER","Removes pencil marks"],["PAPER","Material used for writing"],["TEACHER","Person who helps students learn"]]},
+{d:"Easy • Animals",w:[["TIGER","Striped big cat"],["ZEBRA","African animal with black-and-white stripes"],["HORSE","Animal often ridden by people"],["SNAKE","Legless reptile"],["MOUSE","Small rodent"]]},
+{d:"Easy • Food",w:[["BREAD","Food often made from flour"],["GRAPE","Small fruit that grows in clusters"],["HONEY","Sweet substance made by bees"],["CHEESE","Food made from milk"],["LEMON","Yellow sour citrus fruit"]]},
+{d:"Easy • The body",w:[["HEART","Organ that pumps blood"],["BRAIN","Organ used for thinking"],["KNEE","Joint in the middle of the leg"],["THUMB","Short, opposable finger"],["SKIN","Outer covering of the body"]]},
+{d:"Easy • Travel",w:[["TRAIN","Vehicle that runs on rails"],["PLANE","Aircraft with fixed wings"],["TAXI","Car hired to take passengers"],["ROAD","Route for vehicles"],["BRIDGE","Structure built over a river or road"]]},
+{d:"Easy • Weather",w:[["CLOUD","Visible mass of tiny water droplets in the sky"],["STORM","Severe weather with wind or rain"],["FROST","Thin layer of ice crystals"],["HEAT","High temperature"],["THUNDER","Loud sound during a storm"]]},
+{d:"Easy • Vocabulary",w:[["BRAVE","Ready to face danger"],["QUIET","Making little noise"],["HONEST","Truthful and fair"],["CLEVER","Quick to understand or learn"],["POLITE","Showing good manners"]]},
+{d:"Easy • Places",w:[["MARKET","Place where people buy and sell goods"],["HOTEL","Place where travelers can stay"],["MUSEUM","Place displaying historical or artistic objects"],["OFFICE","Place where administrative work is done"],["GARDEN","Place where flowers or vegetables grow"]]},
+{d:"Easy • Sports",w:[["GOAL","Scoring target in soccer"],["TEAM","Group playing together"],["COACH","Person who trains athletes"],["SCORE","Points earned in a game"],["RACKET","Equipment used in tennis"]]},
+{d:"Easy • Technology",w:[["SCREEN","Surface where images appear"],["MOUSE","Computer pointing device"],["CABLE","Wire used to connect devices"],["ROBOT","Machine that can perform tasks automatically"],["MODEM","Device connecting a network to an internet service"]]},
+{d:"Easy • Time",w:[["CLOCK","Device that shows the time"],["HOUR","Sixty minutes"],["WEEK","Seven days"],["MONTH","One of twelve parts of a year"],["MINUTE","Sixty seconds"]]},
+{d:"Intermediate • Science",w:[["ATOM","Basic unit of a chemical element"],["LASER","Device producing a narrow beam of light"],["FORCE","Push or pull that can change motion"],["ENERGY","Capacity to do work"],["OXYGEN","Gas humans need to breathe"]]},
+{d:"Intermediate • Geography",w:[["RIVER","Natural flowing watercourse"],["DESERT","Very dry region with little rainfall"],["ISLAND","Land surrounded by water"],["VALLEY","Low land between hills or mountains"],["BORDER","Line separating places or countries"]]},
+{d:"Intermediate • Language",w:[["NOUN","Word naming a person, place, thing, or idea"],["VERB","Word expressing an action or state"],["ADVERB","Word that modifies a verb, adjective, or another adverb"],["SYNTAX","Rules for arranging words into sentences"],["IDIOM","Expression whose meaning isn't literal"]]},
+{d:"Intermediate • Human qualities",w:[["PATIENCE","Ability to wait without becoming upset"],["COURAGE","Ability to face fear or difficulty"],["LOYALTY","Faithfulness to a person or cause"],["WISDOM","Good judgment gained through experience"],["EMPATHY","Ability to understand another person's feelings"]]},
+{d:"Intermediate • Mixed clues",w:[["COMPASS","Tool that shows direction"],["JOURNEY","Trip from one place to another"],["MYSTERY","Something difficult to explain or understand"],["FRAGILE","Easily broken or damaged"],["ANCIENT","Belonging to the distant past"]]},
+{d:"Intermediate • Nature",w:[["VOLCANO","Opening in Earth's crust that may release lava"],["GLACIER","Large, slow-moving mass of ice"],["HABITAT","Natural home of an organism"],["PREDATOR","Animal that hunts other animals"],["DROUGHT","Long period with very little rain"]]},
+{d:"Intermediate • Space",w:[["PLANET","Large body orbiting a star"],["GALAXY","Huge system of stars, gas, and dust"],["ORBIT","Path one object takes around another"],["COMET","Icy object that can form a glowing tail near the Sun"],["NEBULA","Cloud of gas and dust in space"]]},
+{d:"Intermediate • Literature",w:[["AUTHOR","Person who writes a book"],["PLOT","Main sequence of events in a story"],["POETRY","Writing that often uses rhythm and imagery"],["GENRE","Category or style of art or writing"],["SYMBOL","Something that represents another idea"]]},
+{d:"Intermediate • Reasoning",w:[["EVIDENCE","Information used to support a claim"],["LOGIC","Study of valid reasoning"],["THEORY","Explanation supported by evidence and reasoning"],["INFER","Reach a conclusion from clues"],["DEDUCE","Reason from general rules to a conclusion"]]},
+{d:"Intermediate • Society",w:[["CITIZEN","Legally recognized member of a country"],["CULTURE","Shared customs, arts, and beliefs"],["JUSTICE","Fair treatment under rules or law"],["ECONOMY","System of producing and exchanging goods"],["ELECTION","Process of choosing leaders by voting"]]},
+{d:"Challenging • Advanced words",w:[["CONCISE","Brief but clear"],["AMBIGUOUS","Having more than one possible meaning"],["PRUDENT","Showing careful judgment"],["VIGOROUS","Strong, energetic, and active"],["OBSCURE","Not clear or easy to understand"]]},
+{d:"Challenging • Science",w:[["NEURON","Cell that transmits nerve signals"],["GENOME","Complete set of genetic material"],["ISOTOPE","Variant of an element with a different number of neutrons"],["ENZYME","Substance that speeds up a biological reaction"],["QUANTUM","Smallest discrete amount in some physical interactions"]]},
+{d:"Challenging • Art and music",w:[["MELODY","Sequence of musical notes forming a tune"],["HARMONY","Combination of notes played together"],["PIGMENT","Material that gives paint its color"],["PERSPECTIVE","Technique for showing depth in art"],["RHYTHM","Pattern of beats or movement"]]},
+{d:"Challenging • Government",w:[["DEMOCRACY","Government in which people hold political power"],["CABINET","Senior ministers advising a leader"],["POLICY","A plan or course of action"],["SOVEREIGN","Possessing supreme authority"],["LEGISLATE","Make or enact laws"]]},
+{d:"Challenging • Word craft",w:[["METAPHOR","Figure of speech describing one thing as another"],["IRONY","Contrast between expectation and reality"],["SATIRE","Use of humor to criticize human behavior"],["ALLUSION","Indirect reference to a person or event"],["RHETORIC","Art of effective or persuasive speaking"]]},
+{d:"Challenging • Earth science",w:[["TECTONIC","Relating to the structure and movement of Earth's crust"],["EROSION","Wearing away of rock or soil"],["SEDIMENT","Material that settles from water or air"],["MANTLE","Thick layer between Earth's crust and core"],["MINERAL","Naturally occurring inorganic solid"]]},
+{d:"Challenging • Psychology",w:[["COGNITION","Mental process of knowing and understanding"],["INSTINCT","Inborn pattern of behavior"],["MOTIVATION","Reason or drive for acting"],["PERCEPTION","Process of interpreting sensory information"],["RECALL","Bring a memory back to mind"]]},
+{d:"Challenging • Philosophy",w:[["ETHICS","Study of moral principles"],["AXIOM","Statement accepted as a starting truth"],["PARADOX","Seemingly contradictory statement that may reveal truth"],["EMPIRICAL","Based on observation or experience"],["RATIONAL","Based on reason rather than emotion"]]},
+{d:"Challenging • Economics",w:[["INFLATION","General rise in prices over time"],["ASSET","Something of economic value owned"],["DEFICIT","Amount by which spending exceeds income"],["EQUITY","Value remaining after debts are deducted"],["SCARCITY","Condition of limited supply"]]},
+{d:"Hard • Rare vocabulary",w:[["EPHEMERAL","Lasting for a very short time"],["UBIQUITOUS","Present or found everywhere"],["RESILIENT","Able to recover quickly from difficulty"],["METICULOUS","Extremely careful about details"],["INEVITABLE","Certain to happen"]]},
+{d:"Hard • Academic terms",w:[["EPISTEMOLOGY","Study of knowledge and how we know things"],["ONTOLOGY","Study of being and existence"],["SEMANTICS","Study of meaning in language"],["ETYMOLOGY","Study of word origins"],["HERMENEUTICS","Theory and practice of interpretation"]]},
+{d:"Hard • Persuasion",w:[["EQUIVOCATE","Use vague language to avoid commitment"],["REFUTE","Prove a statement or claim wrong"],["CASTIGATE","Reprimand or criticize severely"],["OBFUSCATE","Make something harder to understand"],["ALLEVIATE","Make a problem or pain less severe"]]},
+{d:"Hard • Politics and systems",w:[["OLIGARCHY","Rule by a small group of powerful people"],["PLUTOCRACY","Government controlled by the wealthy"],["THEOCRACY","Government by religious authority"],["AUTONOMY","Ability to govern oneself"],["BUREAUCRACY","System of administration using many officials"]]},
+{d:"Hard • Biology",w:[["BIODIVERSITY","Variety of living organisms in an area"],["MUTATION","Change in genetic material"],["SYMBIOSIS","Close relationship between different species"],["ADAPTATION","Trait that helps an organism survive"],["ECOLOGY","Study of organisms and their environment"]]},
+{d:"Hard • Astronomy",w:[["SUPERNOVA","Powerful explosion of a star"],["ASTEROID","Small rocky body orbiting the Sun"],["EXOPLANET","Planet orbiting a star beyond our Sun"],["SINGULARITY","Point where a physical quantity becomes infinite or undefined"],["COSMOLOGY","Scientific study of the universe as a whole"]]},
+{d:"Hard • Precise meanings",w:[["INTRANSIGENT","Unwilling to compromise or change a position"],["PERNICIOUS","Having a harmful effect, often gradually"],["INSCRUTABLE","Impossible to understand or interpret"],["INIMITABLE","So distinctive it cannot be copied"],["PERSPICACIOUS","Having sharp insight and understanding"]]},
+{d:"Hard • Logic and debate",w:[["SYLLOGISM","Deductive argument with two premises and a conclusion"],["FALLACY","Error in reasoning"],["PREMISE","Statement supporting an argument"],["DEDUCTION","Reasoning from general rules to a specific conclusion"],["CONTRADICTION","Two claims that cannot both be true"]]},
+{d:"Expert • Language",w:[["PALIMPSEST","Manuscript reused after earlier writing was erased"],["ONOMATOPOEIA","Word that imitates a sound"],["PLEONASM","Use of more words than necessary"],["ANACHRONISM","Something placed in the wrong historical period"],["PROSOPOPOEIA","Figure of speech giving human qualities to something nonhuman"]]},
+{d:"Expert • Philosophy",w:[["PHENOMENOLOGY","Study of structures of conscious experience"],["DEONTOLOGY","Ethical theory focused on duties and rules"],["TELEOLOGY","Study of purpose or final causes"],["SOLIPSISM","View that only one's own mind is certain to exist"],["UTILITARIAN","Relating to maximizing overall well-being"]]},
+{d:"Expert • Science and systems",w:[["STOICHIOMETRY","Calculation of quantities in chemical reactions"],["HOMEOSTASIS","Maintenance of stable internal conditions"],["THERMODYNAMICS","Study of heat, work, and energy"],["ELECTROMAGNETIC","Relating to linked electric and magnetic fields"],["BIOGEOGRAPHY","Study of the distribution of organisms across Earth"]]},
+{d:"Expert • Literary terms",w:[["JUXTAPOSITION","Placing things side by side for contrast"],["VERISIMILITUDE","Appearance of being true or real"],["INTERTEXTUAL","Relating to connections between texts"],["SYNECDOCHE","Figure of speech using a part to represent a whole"],["LITOTES","Understatement using a negative to express an affirmative"]]},
+{d:"Expert • Challenging concepts",w:[["INCOMMENSURABLE","Unable to be measured or compared by a common standard"],["OBSTREPEROUS","Noisy and difficult to control"],["RECALCITRANT","Stubbornly resistant to authority or control"],["PERSPICUITY","Quality of being clear and easy to understand"],["INDEFATIGABLE","Persisting tirelessly"]]},
+{d:"Expert • Final trial",w:[["APODICTIC","Clearly established or demonstrably true"],["PROLEGOMENON","Introductory discussion preparing for a larger work"],["QUINTESSENCE","Most perfect or typical example of a quality"],["ANTHROPOCENTRIC","Regarding humans as central or most important"],["INELUCTABLE","Impossible to avoid or escape"]]}
+];
+
+const $=id=>document.getElementById(id);
+let current=0, unlocked=1, completed=new Set(), placements=[], cells={}, selected=null, inputs={};
+try{const saved=JSON.parse(localStorage.getItem("crosswordQuestSave")||"{}");unlocked=Math.max(1,Math.min(50,saved.unlocked||1));completed=new Set(saved.completed||[])}catch(e){}
+function clean(s){return s.replace(/[^A-Z]/gi,"").toUpperCase()}
+function save(){localStorage.setItem("crosswordQuestSave",JSON.stringify({unlocked,completed:[...completed]}))}
+function buildPuzzle(levelIndex){
+ const words=levels[levelIndex].w.map((x,i)=>({answer:clean(x[0]),clue:x[1],id:i,dir:"",r:0,c:0}));
+ let placed=[];
+ if(!words.length)return [];
+ placed.push({...words[0],dir:"A",r:0,c:0});
+ for(let wi=1;wi<words.length;wi++){
+  const word=words[wi]; let best=null, bestScore=-1;
+  for(const p of placed){
+   for(let a=0;a<p.answer.length;a++)for(let b=0;b<word.answer.length;b++){
+    if(p.answer[a]!==word.answer[b])continue;
+    let dir=p.dir==="A"?"D":"A";
+    let r=p.r+(p.dir==="D"?a:0)-(dir==="D"?b:0);
+    let c=p.c+(p.dir==="A"?a:0)-(dir==="A"?b:0);
+    let ok=true, score=0;
+    for(let k=0;k<word.answer.length;k++){
+     let rr=r+(dir==="D"?k:0),cc=c+(dir==="A"?k:0), key=rr+","+cc;
+     const existing=placed.flatMap(q=>Array.from(q.answer).map((ch,j)=>({ch,r:q.r+(q.dir==="D"?j:0),c:q.c+(q.dir==="A"?j:0),dir:q.dir}))).filter(x=>x.r===rr&&x.c===cc);
+     if(existing.length && !existing.some(x=>x.ch===word.answer[k])){ok=false;break}
+     if(existing.length)score+=4;
+     if(!existing.length){
+      const before=placed.some(q=>q.r===rr-(dir==="D"?1:0)&&q.c===cc-(dir==="A"?1:0));
+      const after=placed.some(q=>q.r===rr+(dir==="D"?1:0)&&q.c===cc+(dir==="A"?1:0));
+      if(before||after){ok=false;break}
+     }
+    }
+    if(ok&&score>bestScore){bestScore=score;best={...word,dir,r,c}}
+   }
+  }
+  if(best&&bestScore>=0)placed.push(best);
+  else{
+   // Place a non-crossing word with a one-cell gap, keeping the puzzle playable.
+   let maxR=Math.max(...placed.map(p=>p.r+(p.dir==="D"?p.answer.length-1:0)));
+   let maxC=Math.max(...placed.map(p=>p.c+(p.dir==="A"?p.answer.length-1:0)));
+   placed.push({...word,dir:"A",r:maxR+2,c:0});
+  }
+ }
+ const minR=Math.min(...placed.map(p=>p.r)),minC=Math.min(...placed.map(p=>p.c));
+ placed=placed.map(p=>({...p,r:p.r-minR,c:p.c-minC}));
+ // Repeatedly shift any accidentally negative coordinates and create grid dimensions.
+ return placed;
+}
+function renderLevel(idx){
+ current=idx; selected=null;inputs={};$("winBox").classList.remove("show");
+ const level=levels[idx];$("levelTitle").textContent=`Level ${idx+1}`;$("difficulty").textContent=level.d;
+ $("progressText").textContent=`${completed.size} / 50 completed`;$("progressBar").style.width=(completed.size/50*100)+"%";
+ $("status").className="status";$("status").textContent="Choose a clue, then fill the squares.";
+ placements=buildPuzzle(idx);
+ // Make coordinate map, with padding/offset for all placements.
+ let minR=Math.min(...placements.map(p=>p.r)),minC=Math.min(...placements.map(p=>p.c));
+ placements=placements.map(p=>({...p,r:p.r-minR,c:p.c-minC}));
+ let maxR=0,maxC=0;
+ for(const p of placements){maxR=Math.max(maxR,p.r+(p.dir==="D"?p.answer.length-1:0));maxC=Math.max(maxC,p.c+(p.dir==="A"?p.answer.length-1:0))}
+ cells={};let starts={};
+ for(const p of placements){
+  const key=p.r+","+p.c;if(!starts[key])starts[key]=p.id+1;
+  for(let i=0;i<p.answer.length;i++){let r=p.r+(p.dir==="D"?i:0),c=p.c+(p.dir==="A"?i:0),k=r+","+c;if(!cells[k])cells[k]={r,c,answer:p.answer[i],words:[]};cells[k].words.push(p.id)}
+ }
+ const grid=$("grid");grid.innerHTML="";grid.style.gridTemplateColumns=`repeat(${maxC+1},var(--cell))`;
+ for(let r=0;r<=maxR;r++)for(let c=0;c<=maxC;c++){
+  const k=r+","+c,cell=document.createElement("div");cell.className="cell";cell.dataset.key=k;
+  if(cells[k]){
+   const n=starts[k];if(n){const num=document.createElement("span");num.className="num";num.textContent=n;cell.appendChild(num)}
+   const inp=document.createElement("input");inp.maxLength=1;inp.autocomplete="off";inp.autocapitalize="characters";inp.dataset.key=k;inp.setAttribute("aria-label",`Row ${r+1}, column ${c+1}`);
+   inp.addEventListener("input",()=>{inp.value=clean(inp.value).slice(-1);cell.classList.remove("wrong","correct");if(inp.value)moveNext(k);});
+   inp.addEventListener("keydown",e=>{if(e.key==="Backspace"&&!inp.value){movePrev(k)}else if(e.key==="ArrowRight")moveNext(k);else if(e.key==="ArrowLeft")movePrev(k);else if(e.key==="ArrowDown")moveNext(k,true);else if(e.key==="ArrowUp")movePrev(k,true);});
+   cell.appendChild(inp);inputs[k]=inp;
+  }else cell.classList.add("block");
+  grid.appendChild(cell);
+ }
+ $("acrossClues").innerHTML="";$("downClues").innerHTML="";
+ placements.forEach(p=>{
+  const b=document.createElement("button");b.className="clue";b.dataset.id=p.id;
+  b.innerHTML=`<span class="n">${p.id+1}.</span><span class="text">${p.clue} <small>(${p.answer.length})</small></span>`;
+  b.addEventListener("click",()=>selectWord(p.id));(p.dir==="A"?$("acrossClues"):$("downClues")).appendChild(b);
+ });
+ // Restore saved level answers if available.
+ try{const all=JSON.parse(localStorage.getItem("crosswordQuestAnswers")||"{}");const saved=all[idx]||{};for(const [k,v] of Object.entries(saved))if(inputs[k])inputs[k].value=v}catch(e){}
+ updateMap();updateClues();
+}
+function wordCells(p){return Array.from(p.answer).map((_,i)=>`${p.r+(p.dir==="D"?i:0)},${p.c+(p.dir==="A"?i:0)}`)}
+function selectWord(id){selected=id;updateClues();const p=placements.find(x=>x.id===id);const first=wordCells(p).map(k=>inputs[k]).find(x=>x);if(first)first.focus()}
+function updateClues(){document.querySelectorAll(".clue").forEach(b=>{b.classList.toggle("active",Number(b.dataset.id)===selected);const p=placements.find(x=>x.id===Number(b.dataset.id));const done=p&&wordCells(p).every(k=>inputs[k]&&inputs[k].value===cells[k].answer);b.classList.toggle("done",!!done)})}
+function moveNext(k,vertical=false){const p=placements.find(x=>x.id===selected);let keys=p?wordCells(p):Object.keys(inputs);let i=keys.indexOf(k);if(i<0)keys=Object.keys(inputs),i=keys.indexOf(k);let next=keys[i+1];if(next&&inputs[next])inputs[next].focus();saveAnswers();updateClues()}
+function movePrev(k,vertical=false){const p=placements.find(x=>x.id===selected);let keys=p?wordCells(p):Object.keys(inputs);let i=keys.indexOf(k);let prev=keys[i-1];if(prev&&inputs[prev])inputs[prev].focus()}
+function updateMap(){const map=$("levelMap");map.innerHTML="";const sel=$("levelSelect");sel.innerHTML="";for(let i=0;i<50;i++){const b=document.createElement("button");b.className="levelbtn "+(i===current?"current":i<unlocked?"unlocked":"locked");b.textContent=i+1;b.disabled=i+1>unlocked;b.addEventListener("click",()=>renderLevel(i));map.appendChild(b);const o=document.createElement("option");o.value=i;o.textContent=`Level ${i+1}${i+1>unlocked?" 🔒":""}`;o.disabled=i+1>unlocked;sel.appendChild(o)}sel.value=current}
+function saveAnswers(){try{const all=JSON.parse(localStorage.getItem("crosswordQuestAnswers")||"{}");all[current]=Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value]));localStorage.setItem("crosswordQuestAnswers",JSON.stringify(all))}catch(e){}}
+$("levelSelect").addEventListener("change",e=>renderLevel(Number(e.target.value)));
+$("checkBtn").addEventListener("click",()=>{
+ let correct=0,total=Object.keys(inputs).length;
+ for(const [k,inp] of Object.entries(inputs)){const good=inp.value===cells[k].answer;inp.parentElement.classList.toggle("correct",good&&!!inp.value);inp.parentElement.classList.toggle("wrong",!good&&!!inp.value);if(good)correct++}
+ saveAnswers();updateClues();
+ if(correct===total){completed.add(current+1);unlocked=Math.max(unlocked,Math.min(50,current+2));save();updateMap();$("progressText").textContent=`${completed.size} / 50 completed`;$("progressBar").style.width=(completed.size/50*100)+"%";$("status").className="status good";$("status").textContent="Perfect! Every square is correct.";if(!completed.has(current+1))completed.add(current+1);$("winMessage").textContent=current===49?"You conquered all 50 levels!":"You unlocked Level "+(current+2)+"."; $("winBox").classList.add("show");save()}
+ else{$("status").className="status bad";$("status").textContent=`${correct} of ${total} squares correct. Keep going — check the highlighted squares.`}
+});
+$("hintBtn").addEventListener("click",()=>{
+ let p=placements.find(x=>x.id===selected);if(!p){$("status").textContent="Select an Across or Down clue first.";return}
+ const key=wordCells(p).find(k=>inputs[k]&&inputs[k].value!==cells[k].answer);
+ if(!key){$("status").textContent="That word is already correct.";return}
+ inputs[key].value=cells[key].answer;inputs[key].parentElement.classList.remove("wrong");inputs[key].parentElement.classList.add("correct");inputs[key].focus();saveAnswers();updateClues();$("status").textContent="One letter revealed.";
+});
+$("clearBtn").addEventListener("click",()=>{for(const inp of Object.values(inputs)){inp.value="";inp.parentElement.classList.remove("wrong","correct")}saveAnswers();updateClues();$("status").className="status";$("status").textContent="Level cleared. Try again!"});
+$("nextBtn").addEventListener("click",()=>{if(current<49)renderLevel(current+1)});
+renderLevel(0);
+</script>
+</body>
+</html>
