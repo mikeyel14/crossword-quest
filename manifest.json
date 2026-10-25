@@ -1,1 +1,13 @@
-
+{
+  "background_color": "#121212",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Crossword Quest",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "Crossword Quest",
+  "start_url": "/",
+  "theme_color": "#7c4dff",
+  "description": "A fun crossword puzzle game with 50 challenging levels, helpful hints, and coin rewards.",
+  "id": "/"
+}
